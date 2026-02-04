@@ -44,7 +44,19 @@ namespace ZNet
             var type = typeof(T);
             if(_eventTable.TryGetValue(type,out var del))
             {
-                ((Action<T>)del)?.Invoke(eventData);
+                // ((Action<T>)del)?.Invoke(eventData);
+                //保护写法
+                foreach (var d in del.GetInvocationList())
+                {
+                    try
+                    {
+                        ((Action<T>)d)?.Invoke(eventData);
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                    }
+                }
             }
         }
     }
