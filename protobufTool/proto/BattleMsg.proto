@@ -7,4 +7,3 @@ message MsgMove{
 message MsgAttack{
 	optional string desc = 1;
 }
-

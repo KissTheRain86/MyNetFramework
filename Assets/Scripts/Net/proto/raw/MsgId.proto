@@ -1,0 +1,7 @@
+enum MsgId{
+	None=0;
+	MsgMove=1;
+	MsgAttack=2;
+	MsgPing=3;
+	MsgPong=4;
+}

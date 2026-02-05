@@ -99,7 +99,7 @@ namespace ZNet
             if (Length < 8) MoveBytes();
         }
 
-        private void MoveBytes()
+        public void MoveBytes()
         {
             //移到最前
             Array.Copy(Bytes, ReadIndex, Bytes, 0, Length);

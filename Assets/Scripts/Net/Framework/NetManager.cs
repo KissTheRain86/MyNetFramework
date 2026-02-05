@@ -6,6 +6,8 @@ using System.Net.Sockets;
 using UnityEngine;
 using ProtoBuf;
 using System.Linq;
+using UnityEngine.AI;
+using proto.MsgId;
 
 namespace ZNet
 {
@@ -26,6 +28,12 @@ namespace ZNet
         static bool isConnecting = false;
         static bool isClosing = false;
 
+        //接收消息列表
+        static List<IExtensible> msgList = new();
+        //接收消息列表长度
+        static int msgCount = 0;
+        //每一次update处理的消息量
+        readonly static int MAX_MESSAG_NUM = 10;
         private static void InitState()
         {
             socket = new Socket(AddressFamily.InterNetwork,
@@ -34,6 +42,8 @@ namespace ZNet
             writeQueue = new Queue<ByteArray>();
             isConnecting = false;
             isClosing = false;
+            msgList = new();
+            msgCount = 0;
         }
         public static void Connect(string ip,int port)
         {
@@ -102,6 +112,9 @@ namespace ZNet
                 //发送成功连接事件
                 EventCenter.Dispatch(new MsgNetConnect { state = 1 });
                 isConnecting = false;
+                //开始接收数据
+                socket.BeginReceive(readBuff.Bytes, readBuff.WriteIndex,
+                    readBuff.Remain, 0, ReceiveCallback, socket);
             }catch(SocketException ex)
             {
                 Debug.Log("Socket Connect fail" + ex.ToString());
@@ -110,7 +123,6 @@ namespace ZNet
                 isConnecting = false;
             }
         }
-
         private static void SendCallback(IAsyncResult ar)
         {
             Socket socket = (Socket)(ar.AsyncState);
@@ -145,6 +157,41 @@ namespace ZNet
                 socket.Close();
             }
         }
+        private static void ReceiveCallback(IAsyncResult ar)
+        {
+            try
+            {
+                Socket socket = (Socket)ar.AsyncState;
+                // 接收数据的字节长度
+                int count = socket.EndReceive(ar);
+                if (count == 0)
+                {
+                    Close();
+                    return;
+                }
+                readBuff.WriteIndex += count;
+                //处理二进制数据
+                OnReceiveData();
+                //继续接收数据
+                if (readBuff.Remain < 8)
+                {
+                    readBuff.MoveBytes();
+                    readBuff.Resize(readBuff.Length + 2);
+                }
+                socket.BeginReceive(readBuff.Bytes, readBuff.WriteIndex,
+                    readBuff.Remain, 0,ReceiveCallback, socket);
+
+            }catch(SocketException ex)
+            {
+                Debug.Log("Socket Receive fail:" + ex.ToString());
+            }
+        }
+
+        private static void OnReceiveData()
+        {
+            if (readBuff.Length <= 2) return;
+           //获取消息体长度
+        }
 
         #region encode and decode
 
@@ -157,6 +204,26 @@ namespace ZNet
             }
         }
 
+        //两个字节存放协议号
+        public static byte[] EncodeName(IExtensible msg)
+        {
+            string name = msg.GetType().Name;
+            int msgId = 0;
+
+            if(!name._TryParseEnumValue(typeof(MsgId),out msgId))
+            {
+                throw new Exception($"MsgId not found for message type: {name}");
+            }
+            //转成ushort两字节
+            ushort id = (ushort)msgId;
+            //小端写入
+            byte[] bytes = new byte[2];
+            bytes[0] = (byte)(id & 0xFF);//取低八位
+            bytes[1] = (byte)((id >> 8) & 0xFF);//取高八位
+            return bytes;
+        }
+
+       
         public static IExtensible Decode(string protoName,
             byte[] bytes,int offset,int count)
         {
@@ -166,6 +233,26 @@ namespace ZNet
                 return (IExtensible)Serializer.NonGeneric.Deserialize(t, memory);
             }
         }
+
+        public static string DecodeName(byte[] bytes, int offset)
+        {
+            if (bytes == null || bytes.Length < offset + 2)
+            {
+                Debug.LogError("DecodeName: bytes length not enough");
+                return null;
+            }
+            //读取两个字节（小端）
+            ushort msgId = (ushort)(bytes[offset] | (bytes[offset + 1] << 8));
+            //转成枚举
+            if (!Enum.IsDefined(typeof(MsgId), msgId))
+            {
+                Debug.LogError($"DecodeName: Unknown MsgId = {msgId}");
+                return null;
+            }
+            return ((MsgId)msgId).ToString();
+        }
+
+
         #endregion
 
 
