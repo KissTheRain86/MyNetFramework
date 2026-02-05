@@ -85,7 +85,18 @@ namespace ZNet
             if (socket == null || !socket.Connected) return;
             if (isConnecting || isClosing) return;
             //数据编码
-            var sendBytes = Encode(msg);
+            byte[] nameBytes = EncodeName(msg);//两个
+            byte[] bodyBytes = Encode(msg);
+            int len = nameBytes.Length + bodyBytes.Length;
+            var sendBytes = new byte[len + 2];
+            //组装长度
+            sendBytes[0] = (byte)(len % 256);
+            sendBytes[1] = (byte)(len / 256);
+            //组装协议号
+            Array.Copy(nameBytes,0,sendBytes,2,nameBytes.Length);
+            //组装消息体
+            Array.Copy(bodyBytes, 0, sendBytes, 2 + nameBytes.Length, bodyBytes.Length);
+
             //写入队列
             ByteArray ba = new ByteArray(sendBytes);
             int count = 0;//writequeue的长度
