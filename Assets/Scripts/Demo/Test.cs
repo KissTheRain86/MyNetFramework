@@ -1,3 +1,4 @@
+using proto.BattleMsg;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,6 +9,20 @@ public class Test : MonoBehaviour
     private void Awake()
     {
         EventCenter.AddListener<MsgNetConnect>(OnConnectCallback);
+    }
+
+    private void Start()
+    {
+        //±‡¬Î≤‚ ‘
+        MsgMove move = new MsgMove();
+        move.x = 222;
+        byte[] bs = NetManager.Encode(move);
+        Debug.Log("Encode MsgMove:" + System.BitConverter.ToString(bs));
+
+        //Ω‚¬Î≤‚ ‘
+        ProtoBuf.IExtensible m = NetManager.Decode("proto.BattleMsg.MsgMove", bs, 0, bs.Length);
+        MsgMove m2 = (MsgMove)m;
+        Debug.Log("Decode MsgMove:" + m2.x);
     }
 
     private void OnDestroy()

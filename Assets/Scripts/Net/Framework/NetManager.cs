@@ -87,7 +87,30 @@ namespace ZNet
             }
         }
 
-       
+
+        #region encode and decode
+
+        public static byte[] Encode(ProtoBuf.IExtensible msg)
+        {
+            using(var memory = new System.IO.MemoryStream())
+            {
+                ProtoBuf.Serializer.Serialize(memory, msg);
+                return memory.ToArray();
+            }
+        }
+
+        public static ProtoBuf.IExtensible Decode(string protoName,
+            byte[] bytes,int offset,int count)
+        {
+            using(var memory = new System.IO.MemoryStream(bytes, offset, count))
+            {
+                Type t = Type.GetType(protoName);
+                return (ProtoBuf.IExtensible)ProtoBuf.Serializer.NonGeneric.Deserialize(t, memory);
+            }
+        }
+        #endregion
+
+
     }
 }
 
