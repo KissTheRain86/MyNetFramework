@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
+using ProtoBuf;
+using System.Linq;
 
 namespace ZNet
 {
@@ -68,6 +70,28 @@ namespace ZNet
             }
         }
 
+        public static void Send(IExtensible msg)
+        {
+            if (socket == null || !socket.Connected) return;
+            if (isConnecting || isClosing) return;
+            //数据编码
+            var sendBytes = Encode(msg);
+            //写入队列
+            ByteArray ba = new ByteArray(sendBytes);
+            int count = 0;//writequeue的长度
+            lock (writeQueue)
+            {
+                writeQueue.Enqueue(ba);
+                count = writeQueue.Count;
+            }
+            //发送
+            if (count == 1)
+            {
+                socket.BeginSend(sendBytes, 0, sendBytes.Length,
+                    0, SendCallback, socket);
+            }
+        }
+
         private static void ConnectCallback(IAsyncResult ar)
         {
             try
@@ -87,25 +111,59 @@ namespace ZNet
             }
         }
 
+        private static void SendCallback(IAsyncResult ar)
+        {
+            Socket socket = (Socket)(ar.AsyncState);
+            if (socket == null || !socket.Connected) return;
+            //返回实际发送成功的字节数 可能没有把当期消息全部发送完
+            int count = socket.EndSend(ar);
+            //获取当期正在发送的bytearray
+            ByteArray ba = null;
+            lock (writeQueue)
+            {
+                if (writeQueue.Count > 0)
+                {
+                    ba = writeQueue.First();
+                    //记录 刚才发送了count个字节
+                    ba.ReadIndex += count;
+                    if (ba.Length == 0)
+                    {
+                        //判断当期协议是否发送完
+                        writeQueue.Dequeue();
+                        ba = writeQueue.Count>0? writeQueue.First():null;
+                    }
+                }
+            }
+            //循环发送
+            if (ba != null)
+            {
+                socket.BeginSend(ba.Bytes, ba.ReadIndex, ba.Length,
+                    0, SendCallback, socket);
+            }
+            else if (isClosing)
+            {
+                socket.Close();
+            }
+        }
 
         #region encode and decode
 
-        public static byte[] Encode(ProtoBuf.IExtensible msg)
+        public static byte[] Encode(IExtensible msg)
         {
             using(var memory = new System.IO.MemoryStream())
             {
-                ProtoBuf.Serializer.Serialize(memory, msg);
+                Serializer.Serialize(memory, msg);
                 return memory.ToArray();
             }
         }
 
-        public static ProtoBuf.IExtensible Decode(string protoName,
+        public static IExtensible Decode(string protoName,
             byte[] bytes,int offset,int count)
         {
             using(var memory = new System.IO.MemoryStream(bytes, offset, count))
             {
                 Type t = Type.GetType(protoName);
-                return (ProtoBuf.IExtensible)ProtoBuf.Serializer.NonGeneric.Deserialize(t, memory);
+                return (IExtensible)Serializer.NonGeneric.Deserialize(t, memory);
             }
         }
         #endregion
