@@ -209,9 +209,9 @@ namespace ZNet
             readBuff.ReadIndex += 2;
             //解析协议名
             int nameCount = 2;
-            string protoName = DecodeName(readBuff.Bytes,
+            Type protoType = DecodeName(readBuff.Bytes,
                 readBuff.ReadIndex);
-            if(protoName == string.Empty)
+            if(protoType == null)
             {
                 Debug.Log("OnReceiveData Decode Msg Name fail");
                 return;
@@ -234,13 +234,7 @@ namespace ZNet
         //两个字节存放协议号
         public static byte[] EncodeName(IExtensible msg)
         {
-            string name = msg.GetType().Name;
-            int msgId = 0;
-
-            if(!name._TryParseEnumValue(typeof(MsgId),out msgId))
-            {
-                throw new Exception($"MsgId not found for message type: {name}");
-            }
+            int msgId = (int)MsgRegistry.GetId(msg.GetType());
             //转成ushort两字节
             ushort id = (ushort)msgId;
             //小端写入
@@ -250,7 +244,6 @@ namespace ZNet
             return bytes;
         }
 
-       
         public static IExtensible Decode(string protoName,
             byte[] bytes,int offset,int count)
         {
@@ -261,7 +254,7 @@ namespace ZNet
             }
         }
 
-        public static string DecodeName(byte[] bytes, int offset)
+        public static Type DecodeName(byte[] bytes, int offset)
         {
             if (bytes == null || bytes.Length < offset + 2)
             {
@@ -276,7 +269,7 @@ namespace ZNet
                 Debug.LogError($"DecodeName: Unknown MsgId = {msgId}");
                 return null;
             }
-            return ((MsgId)msgId).ToString();
+            return MsgRegistry.GetType((MsgId)msgId);
         }
 
 
