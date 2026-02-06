@@ -201,7 +201,23 @@ namespace ZNet
         private static void OnReceiveData()
         {
             if (readBuff.Length <= 2) return;
-           //获取消息体长度
+            //获取消息体长度
+            int readIndex = readBuff.ReadIndex;
+            byte[] bytes = readBuff.Bytes;
+            Int16 bodyLength = (Int16)((bytes[readIndex + 1] << 8) | bytes[readIndex]);
+            if (readBuff.Length < bodyLength) return;
+            readBuff.ReadIndex += 2;
+            //解析协议名
+            int nameCount = 2;
+            string protoName = DecodeName(readBuff.Bytes,
+                readBuff.ReadIndex);
+            if(protoName == string.Empty)
+            {
+                Debug.Log("OnReceiveData Decode Msg Name fail");
+                return;
+            }
+            readBuff.ReadIndex += 2;
+            //
         }
 
         #region encode and decode
