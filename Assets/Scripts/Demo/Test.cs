@@ -9,6 +9,7 @@ public class Test : MonoBehaviour
     private void Awake()
     {
         EventCenter.AddListener<MsgNetConnect>(OnConnectCallback);
+        EventCenter.AddListener<MsgNetProto>(OnProtoCallback);
     }
 
     private void Start()
@@ -20,14 +21,20 @@ public class Test : MonoBehaviour
         Debug.Log("Encode MsgMove:" + System.BitConverter.ToString(bs));
 
         //解码测试
-        ProtoBuf.IExtensible m = NetManager.Decode("proto.BattleMsg.MsgMove", bs, 0, bs.Length);
+        ProtoBuf.IExtensible m = NetManager.Decode(proto.MsgId.MsgId.MsgMove, bs, 0, bs.Length);
         MsgMove m2 = (MsgMove)m;
         Debug.Log("Decode MsgMove:" + m2.x);
+    }
+
+    private void Update()
+    {
+        NetManager.Update();
     }
 
     private void OnDestroy()
     {
         EventCenter.RemoveListener<MsgNetConnect>(OnConnectCallback);
+        EventCenter.RemoveListener<MsgNetProto>(OnProtoCallback);
     }
 
     public void OnConnectClick()
@@ -56,5 +63,10 @@ public class Test : MonoBehaviour
                 break;
         }
       
+    }
+
+    private void OnProtoCallback(MsgNetProto data)
+    {
+
     }
 }

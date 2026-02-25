@@ -94,7 +94,7 @@ namespace ZNet
             CheckAndMoveBytes();
             return ret;
         }
-        private void CheckAndMoveBytes()
+        public void CheckAndMoveBytes()
         {
             if (Length < 8) MoveBytes();
         }

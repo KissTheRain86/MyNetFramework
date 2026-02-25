@@ -85,7 +85,7 @@ namespace ZNet
             if (socket == null || !socket.Connected) return;
             if (isConnecting || isClosing) return;
             //数据编码
-            byte[] nameBytes = EncodeName(msg);//两个
+            byte[] nameBytes = EncodeName(msg);//两个字节
             byte[] bodyBytes = Encode(msg);
             int len = nameBytes.Length + bodyBytes.Length;
             var sendBytes = new byte[len + 2];
@@ -204,20 +204,68 @@ namespace ZNet
             //获取消息体长度
             int readIndex = readBuff.ReadIndex;
             byte[] bytes = readBuff.Bytes;
-            Int16 bodyLength = (Int16)((bytes[readIndex + 1] << 8) | bytes[readIndex]);
+            Int16 bodyLength = (Int16)((bytes[readIndex + 1] << 8) |
+                bytes[readIndex]);
             if (readBuff.Length < bodyLength) return;
-            readBuff.ReadIndex += 2;
+            readBuff.ReadIndex += 2;//消息长度
             //解析协议名
             int nameCount = 2;
-            Type protoType = DecodeName(readBuff.Bytes,
-                readBuff.ReadIndex);
+            Type protoType = DecodeName(readBuff.Bytes,readBuff.ReadIndex);
             if(protoType == null)
             {
                 Debug.Log("OnReceiveData Decode Msg Name fail");
                 return;
             }
-            readBuff.ReadIndex += 2;
-            //
+            readBuff.ReadIndex += nameCount;
+            //解析协议体
+            int bodyCount = bodyLength - nameCount;
+            MsgId protoId = MsgRegistry.GetId(protoType);
+            var msg = Decode(protoId, readBuff.Bytes, readBuff.ReadIndex, bodyCount);
+            readBuff.ReadIndex += bodyCount;
+            readBuff.CheckAndMoveBytes();
+            //添加到消息队列
+            lock (msgList)
+            {
+                msgList.Add(msg);
+            }
+            msgCount++;
+            //继续读取消息
+            if (readBuff.Length > 2)
+            {
+                OnReceiveData();
+            }
+        }
+
+        private static void MsgUpdate()
+        {
+            if (msgCount == 0) return;
+            for (int i = 0; i < MAX_MESSAG_NUM; i++)
+            {
+                //获取第一条消息
+                IExtensible msg = null;
+                lock (msgList)
+                {
+                    if (msgList.Count > 0)
+                    {
+                        msg = msgList[0];
+                        msgList.RemoveAt(0);
+                        msgCount--;
+                    }
+                }
+                //分发消息
+                if (msg != null)
+                {
+                    EventCenter.Dispatch<IExtensible>(msg);
+                }else
+                {
+                    break;
+                }
+            }
+        }
+
+        public static void Update()
+        {
+            MsgUpdate();
         }
 
         #region encode and decode
@@ -244,12 +292,17 @@ namespace ZNet
             return bytes;
         }
 
-        public static IExtensible Decode(string protoName,
+        public static IExtensible Decode(MsgId protoId,
             byte[] bytes,int offset,int count)
         {
             using(var memory = new System.IO.MemoryStream(bytes, offset, count))
             {
-                Type t = Type.GetType(protoName);
+                Type t = MsgRegistry.GetType(protoId);
+                if (t == null)
+                {
+                    Debug.LogError("Decode: protoId is not exist");
+                    return null;
+                }
                 return (IExtensible)Serializer.NonGeneric.Deserialize(t, memory);
             }
         }
