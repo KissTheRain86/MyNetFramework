@@ -8,6 +8,7 @@ using ProtoBuf;
 using System.Linq;
 using UnityEngine.AI;
 using proto.MsgId;
+using proto.SysMsg;
 
 namespace ZNet
 {
@@ -34,6 +35,13 @@ namespace ZNet
         static int msgCount = 0;
         //每一次update处理的消息量
         readonly static int MAX_MESSAG_NUM = 10;
+
+        //心跳
+        public static bool IsUsePing = true;
+        public static int PingInterval = 30;
+        public static readonly int PongTimeOut = 120;
+        static float lastPingTime = 0;
+        static float lastPongTime = 0;
         private static void InitState()
         {
             socket = new Socket(AddressFamily.InterNetwork,
@@ -44,7 +52,21 @@ namespace ZNet
             isClosing = false;
             msgList = new();
             msgCount = 0;
+
+            lastPingTime = Time.time;
+            lastPongTime = Time.time;
         }
+
+        public static void Update()
+        {
+            MsgUpdate();
+            PingUpdate();
+        }
+        public static void UpdatePongTime()
+        {
+            lastPongTime = Time.time;
+        }
+
         public static void Connect(string ip,int port)
         {
             if(socket!=null && socket.Connected)
@@ -264,11 +286,25 @@ namespace ZNet
             }
         }
 
-        public static void Update()
+        //心跳
+        private static void PingUpdate()
         {
-            MsgUpdate();
+            if (IsUsePing == false) return;
+            // send ping
+            if(Time.time - lastPingTime > PingInterval)
+            {
+                MsgPing msgPing = new MsgPing();
+                Send(msgPing);
+                lastPingTime = Time.time;
+            }
+            //检测pong时间 超时关闭
+            if(Time.time - lastPongTime > PongTimeOut)
+            {
+                Close();
+            }
         }
 
+       
         #region encode and decode
 
         public static byte[] Encode(IExtensible msg)

@@ -83,6 +83,9 @@ public class Test : MonoBehaviour
                     MsgMove moveProto = (MsgMove)proto;
                     Debug.Log("OnMsgMove msg.x=" + moveProto.x);
                     break;
+                case MsgId.MsgPong:
+                    NetManager.UpdatePongTime();
+                    break;
             }
         }
     }
