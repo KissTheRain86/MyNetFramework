@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using ZNet;
+using proto.MsgId;
 
 public class Test : MonoBehaviour
 {
@@ -21,7 +22,7 @@ public class Test : MonoBehaviour
         Debug.Log("Encode MsgMove:" + System.BitConverter.ToString(bs));
 
         //解码测试
-        ProtoBuf.IExtensible m = NetManager.Decode(proto.MsgId.MsgId.MsgMove, bs, 0, bs.Length);
+        object m = NetManager.Decode(MsgId.MsgMove, bs, 0, bs.Length);
         MsgMove m2 = (MsgMove)m;
         Debug.Log("Decode MsgMove:" + m2.x);
     }
@@ -67,6 +68,16 @@ public class Test : MonoBehaviour
 
     private void OnProtoCallback(MsgNetProto data)
     {
-
+        var proto = data.Msg;
+        if(proto!=null)
+        {
+            switch (data.MsgId)
+            {
+                case MsgId.MsgMove:
+                    MsgMove moveProto = (MsgMove)proto;
+                    Debug.Log("OnMsgMove msg.x=" + moveProto.x);
+                    break;
+            }
+        }
     }
 }

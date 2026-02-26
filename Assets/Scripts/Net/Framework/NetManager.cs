@@ -29,7 +29,7 @@ namespace ZNet
         static bool isClosing = false;
 
         //接收消息列表
-        static List<IExtensible> msgList = new();
+        static List<object> msgList = new();
         //接收消息列表长度
         static int msgCount = 0;
         //每一次update处理的消息量
@@ -242,7 +242,7 @@ namespace ZNet
             for (int i = 0; i < MAX_MESSAG_NUM; i++)
             {
                 //获取第一条消息
-                IExtensible msg = null;
+                object msg = null;
                 lock (msgList)
                 {
                     if (msgList.Count > 0)
@@ -255,7 +255,8 @@ namespace ZNet
                 //分发消息
                 if (msg != null)
                 {
-                    EventCenter.Dispatch<IExtensible>(msg);
+                    MsgId msgId = MsgRegistry.GetId(msg.GetType());
+                    EventCenter.Dispatch<MsgNetProto>(new MsgNetProto {Msg = msg,MsgId = msgId });
                 }else
                 {
                     break;
@@ -292,7 +293,7 @@ namespace ZNet
             return bytes;
         }
 
-        public static IExtensible Decode(MsgId protoId,
+        public static object Decode(MsgId protoId,
             byte[] bytes,int offset,int count)
         {
             using(var memory = new System.IO.MemoryStream(bytes, offset, count))
@@ -303,7 +304,7 @@ namespace ZNet
                     Debug.LogError("Decode: protoId is not exist");
                     return null;
                 }
-                return (IExtensible)Serializer.NonGeneric.Deserialize(t, memory);
+                return Serializer.NonGeneric.Deserialize(t, memory);
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using ProtoBuf;
+﻿using proto.MsgId;
+using ProtoBuf;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -12,7 +13,8 @@ namespace ZNet
 
     public struct MsgNetProto
     {       
-        public Extensible Msg;
+        public MsgId MsgId;
+        public object Msg;
     }
 
 }
