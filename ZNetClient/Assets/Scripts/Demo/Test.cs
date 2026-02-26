@@ -15,16 +15,16 @@ public class Test : MonoBehaviour
 
     private void Start()
     {
-        //编码测试
-        MsgMove move = new MsgMove();
-        move.x = 222;
-        byte[] bs = NetManager.Encode(move);
-        Debug.Log("Encode MsgMove:" + System.BitConverter.ToString(bs));
+        ////编码测试
+        //MsgMove move = new MsgMove();
+        //move.x = 222;
+        //byte[] bs = NetManager.Encode(move);
+        //Debug.Log("Encode MsgMove:" + System.BitConverter.ToString(bs));
 
-        //解码测试
-        object m = NetManager.Decode(MsgId.MsgMove, bs, 0, bs.Length);
-        MsgMove m2 = (MsgMove)m;
-        Debug.Log("Decode MsgMove:" + m2.x);
+        ////解码测试
+        //object m = NetManager.Decode(MsgId.MsgMove, bs, 0, bs.Length);
+        //MsgMove m2 = (MsgMove)m;
+        //Debug.Log("Decode MsgMove:" + m2.x);
     }
 
     private void Update()
@@ -47,6 +47,12 @@ public class Test : MonoBehaviour
     public void OnCloseClick()
     {
         NetManager.Close();
+    }
+
+    public void OnMoveClick()
+    {
+        MsgMove m = new MsgMove { x = 12, y = 34, z = 56 };
+        NetManager.Send(m);
     }
 
     private void OnConnectCallback(MsgNetConnect data)

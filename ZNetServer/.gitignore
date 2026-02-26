@@ -1,0 +1,66 @@
+## Visual Studio cache and generated files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Build results
+bin/
+obj/
+out/
+Debug/
+Release/
+
+## NuGet Packages
+*.nupkg
+**/packages/*
+!**/packages/build/
+*.snupkg
+
+# NuGet restore cache
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## .NET Core
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+
+## Logs
+*.log
+
+## Temporary files
+~$*
+*.tmp
+*.temp
+*.bak
+*.old
+
+## Rider / Resharper
+.idea/
+*.DotSettings.user
+
+## OS-specific files
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+## Visual Studio Code (if you use it with VS)
+.vscode/
+
+## Other
+*.sqlite-journal
+*.db-wal
+*.db-shm
