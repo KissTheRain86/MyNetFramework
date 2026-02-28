@@ -1,7 +1,9 @@
-﻿using System;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
+using ProtoBuf;
+using proto.BattleMsg;
+using proto.MsgId;
+using proto.SysMsg;
 
 namespace ZNetServer
 {
@@ -16,7 +18,7 @@ namespace ZNetServer
         static List<Socket> checkReadList = new List<Socket>();
         public static void Main(string[] args)
         {
-            // 建立连接socket          
+            // 建立连接socket
             listenfd = new Socket(AddressFamily.InterNetwork,
                 SocketType.Stream, ProtocolType.Tcp);
             //bind
@@ -42,13 +44,10 @@ namespace ZNetServer
                 {
                     if (s == listenfd)
                     {
-                        //负责监听的socket
-                        //有新的客户端连接 
                         ReadListenfd(s);
                     }
                     else
                     {
-                        //负责读的socket
                         ReadClientfd(s);
                     }
                 }
@@ -67,89 +66,115 @@ namespace ZNetServer
         public static bool ReadClientfd(Socket clientfd)
         {
             ClientState state = Clients[clientfd];
-            //接收
             int count = 0;
             try
             {
                 count = clientfd.Receive(state.readBuff);
             }
-            catch (SocketException ex)
+            catch (SocketException)
             {
                 OnClientDisconnect(state, clientfd);
                 return false;
             }
-            //客户端关闭
+
             if (count <= 0)
             {
                 OnClientDisconnect(state, clientfd);
                 return false;
             }
-            //将收到的数据追加到缓存
+
             state.cache.AddRange(state.readBuff.AsSpan(0, count).ToArray());
 
-            //拆包 可能一次recieve拿到多条
             while (true)
             {
-                //长度不足消息头 
                 if (state.cache.Count < 2) break;
                 Int16 bodyLen = BitConverter.ToInt16(state.cache.ToArray(), 0);
-                //消息不完整
                 if (state.cache.Count < 2 + bodyLen) break;
-                //完整 取出消息体
+
                 byte[] bodyBytes = state.cache.GetRange(2, bodyLen).ToArray();
-                //移除已处理数据
                 state.cache.RemoveRange(0, 2 + bodyLen);
-                //处理消息 
-                string recvStr = System.Text.Encoding.UTF8.GetString(bodyBytes);
-                HandleMsg(state, recvStr);
+                HandleMsg(state, bodyBytes);
             }
             return true;
         }
 
-        static void HandleMsg(ClientState state, string recvStr)
+        static void HandleMsg(ClientState state, byte[] bodyBytes)
         {
-            Console.WriteLine("Recieve:" + recvStr);
+            if (bodyBytes.Length < 2)
+            {
+                Console.WriteLine("Invalid message length");
+                return;
+            }
 
-            string[] split = recvStr.Split('|');
-            if (split.Length < 2)
+            ushort msgIdRaw = (ushort)(bodyBytes[0] | (bodyBytes[1] << 8));
+            if (!Enum.IsDefined(typeof(MsgId), (int)msgIdRaw))
             {
-                Console.WriteLine("Invalid message format");
+                Console.WriteLine($"Unknown MsgId:{msgIdRaw}");
                 return;
             }
-            string msgName = split[0];
-            string msgArgs = split[1];
-            string funcName = "Msg" + msgName;
-            MethodInfo methodInfo = typeof(MsgHandler).GetMethod(funcName);
-            if (methodInfo == null)
+
+            MsgId msgId = (MsgId)msgIdRaw;
+            Type? msgType = MsgRegistry.GetType(msgId);
+            if (msgType == null)
             {
-                Console.WriteLine("cant find method:" + funcName);
+                Console.WriteLine($"MsgId not registered:{msgId}");
                 return;
             }
-            object[] o = { state, msgArgs };
-            methodInfo.Invoke(null, o);
+
+            object msg;
+            using (var ms = new MemoryStream(bodyBytes, 2, bodyBytes.Length - 2))
+            {
+                msg = Serializer.NonGeneric.Deserialize(msgType, ms);
+            }
+
+            switch (msgId)
+            {
+                case MsgId.MsgMove:
+                    MsgHandler.MsgMove(state, (MsgMove)msg);
+                    break;
+                case MsgId.MsgAttack:
+                    MsgHandler.MsgAttack(state, (MsgAttack)msg);
+                    break;
+                case MsgId.MsgPing:
+                    MsgHandler.MsgPing(state, (MsgPing)msg);
+                    break;
+                default:
+                    Console.WriteLine($"Unhandled MsgId:{msgId}");
+                    break;
+            }
         }
 
-        public static void Send(ClientState state, string sendStr)
+        public static void Send(ClientState state, IExtensible msg)
         {
-            byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(sendStr);//请求体
-            Int16 len = (Int16)bodyBytes.Length;
-            byte[] lenBytes = BitConverter.GetBytes(len);//长度标识
-            byte[] sendBytes = lenBytes.Concat(bodyBytes).ToArray();
+            byte[] bodyBytes;
+            using (var ms = new MemoryStream())
+            {
+                Serializer.Serialize(ms, msg);
+                bodyBytes = ms.ToArray();
+            }
+
+            ushort msgId = (ushort)MsgRegistry.GetId(msg.GetType());
+            byte[] msgIdBytes = new byte[2];
+            msgIdBytes[0] = (byte)(msgId & 0xFF);
+            msgIdBytes[1] = (byte)((msgId >> 8) & 0xFF);
+
+            int payloadLen = msgIdBytes.Length + bodyBytes.Length;
+            byte[] sendBytes = new byte[payloadLen + 2];
+            sendBytes[0] = (byte)(payloadLen % 256);
+            sendBytes[1] = (byte)(payloadLen / 256);
+            Array.Copy(msgIdBytes, 0, sendBytes, 2, msgIdBytes.Length);
+            Array.Copy(bodyBytes, 0, sendBytes, 4, bodyBytes.Length);
+
             state.socket.Send(sendBytes);
         }
+
         private static void OnClientDisconnect(ClientState state, Socket clientfd)
         {
-            //发送该玩家断线的事件
-            MethodInfo info = typeof(EventHandler).GetMethod("OnDisconnect");
-            object[] args = { state };
-            info.Invoke(null, args);
-
-            //移除该玩家的socket
+            EventHandler.OnDisconnect(state);
             clientfd.Close();
             Clients.Remove(clientfd);
             Console.WriteLine("Socket Close");
         }
 
     }
-
 }

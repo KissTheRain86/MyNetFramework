@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ZNetServer
 {
@@ -16,12 +12,8 @@ namespace ZNetServer
                 Console.WriteLine("state is null");
                 return;
             }
-            string desc = state.socket.RemoteEndPoint.ToString();
-            string sendStr = "Leave|" + desc + ",";
-            foreach (var cs in MainClass.Clients.Values)
-            {
-                MainClass.Send(cs, sendStr);
-            }
+
+            Console.WriteLine($"Client disconnected: {state.socket.RemoteEndPoint}");
         }
     }
 }
