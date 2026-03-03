@@ -354,7 +354,7 @@ namespace ZNet
             //读取两个字节（小端）
             ushort msgId = (ushort)(bytes[offset] | (bytes[offset + 1] << 8));
             //转成枚举
-            if (!Enum.IsDefined(typeof(MsgId), msgId))
+            if (!Enum.IsDefined(typeof(MsgId),(int)msgId))
             {
                 Debug.LogError($"DecodeName: Unknown MsgId = {msgId}");
                 return null;

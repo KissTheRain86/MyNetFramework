@@ -5,12 +5,12 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ZNetServer
+namespace ZNetServer.net
 {
     public class ClientState
     {
         public Socket socket;
-        public byte[] readBuff = new byte[1024];
+        public ByteArray readBuff = new ByteArray();
 
         //新增缓存 解决粘包/拆包
         public List<byte> cache = new List<byte>();

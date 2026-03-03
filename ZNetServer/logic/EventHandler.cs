@@ -1,6 +1,7 @@
 ﻿using System;
+using ZNetServer.net;
 
-namespace ZNetServer
+namespace ZNetServer.logic
 {
     public class EventHandler
     {

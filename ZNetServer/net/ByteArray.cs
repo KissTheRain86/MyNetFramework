@@ -1,14 +1,17 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Linq;
+using System.Reflection.Metadata.Ecma335;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace ZNet
+namespace ZNetServer.net
 {
     //读写分离指针模型
     //|----已读----|----未读数据----|----空闲空间----|
     // 0         ReadIndex       WriteIndex       capacity
-    internal class ByteArray
+
+    public class ByteArray
     {
         //默认大小
         const int DEFAULT_SIZE = 1024;
@@ -120,4 +123,3 @@ namespace ZNet
         }
     }
 }
-
