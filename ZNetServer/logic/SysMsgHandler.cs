@@ -8,10 +8,12 @@ using ZNetServer.net;
 
 namespace ZNetServer.logic
 {
-    internal class SysMsgHandler
+    public partial class MsgHandler
     {
         public static void MsgPing(ClientState client, MsgPing _)
         {
+            Console.WriteLine("MsgPing");
+            client.lastPingTime = NetManager.GetTimeStamp();
             NetManager.Send(client, new MsgPong());
         }
     }

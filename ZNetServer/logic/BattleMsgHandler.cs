@@ -8,7 +8,7 @@ using ZNetServer.net;
 
 namespace ZNetServer.logic
 {
-    internal class BattleMsgHandler
+    public partial class MsgHandler
     {
         public static void MsgMove(ClientState client, MsgMove msg)
         {

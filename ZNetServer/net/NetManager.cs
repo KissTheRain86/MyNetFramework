@@ -24,7 +24,9 @@ namespace ZNetServer.net
 
         //checkReadList
         public static List<Socket> checkReadList = new List<Socket>();
-
+        //Ping间隔
+        public static long PingInterval = 30;
+        public static long MaxPingInterval = 120;
         public static void StartLoop(int listenPort)
         {
             listenfd = new Socket(AddressFamily.InterNetwork,
@@ -152,13 +154,13 @@ namespace ZNetServer.net
             switch (msgId)
             {
                 case MsgId.MsgMove:
-                    BattleMsgHandler.MsgMove(state, (MsgMove)msg);
+                    MsgHandler.MsgMove(state, (MsgMove)msg);
                     break;
                 case MsgId.MsgAttack:
-                    BattleMsgHandler.MsgAttack(state, (MsgAttack)msg);
+                    MsgHandler.MsgAttack(state, (MsgAttack)msg);
                     break;
                 case MsgId.MsgPing:
-                    SysMsgHandler.MsgPing(state, (MsgPing)msg);
+                    MsgHandler.MsgPing(state, (MsgPing)msg);
                     break;
                 default:
                     Console.WriteLine($"Unhandled MsgId:{msgId}");
@@ -195,7 +197,7 @@ namespace ZNetServer.net
             state.socket.Send(sendBytes);
         }
 
-        private static void Close(ClientState state)
+        public static void Close(ClientState state)
         {
             EventHandler.OnDisconnect(state);
             state.socket.Close();
@@ -216,10 +218,14 @@ namespace ZNetServer.net
 
         static void Timer()
         {
-
+            EventHandler.OnTimer();
         }
 
-
+        public static long GetTimeStamp()
+        {
+            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0);
+            return Convert.ToInt64(ts.TotalSeconds);
+        }
 
     }
 }
